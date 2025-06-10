@@ -28,6 +28,8 @@ import org.springframework.util.StringUtils;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.alibaba.cloud.ai.graph.StateGraph.END;
+
 /**
  * @author yingzi
  * @since 2025/5/18 16:54
@@ -47,9 +49,11 @@ public class HumanFeedbackNode implements NodeAction {
 		updated.put("plan_iterations", StateUtil.getPlanIterations(state) + 1);
 
 		if (!StateUtil.getAutoAcceptedPlan(state)) {
-			// todo 这里改为接口形式
 			logger.info("Do you accept the plan? [y/n]：");
-			interrupt(state);
+			if(interrupt(state, updated)){
+				return updated;
+			}
+
 
 			Map<String, Object> feedBackData = state.humanFeedback().data();
 			String feedback = feedBackData.getOrDefault("feed_back", "n").toString();
@@ -79,10 +83,12 @@ public class HumanFeedbackNode implements NodeAction {
 		return updated;
 	}
 
-	private void interrupt(OverAllState state) throws GraphInterruptException {
+	private boolean interrupt(OverAllState state, Map<String, Object> updated) throws GraphInterruptException {
 		if (state.humanFeedback() == null || !state.isResume()) {
-			throw new GraphInterruptException("interrupt");
+			updated.put("human_next_node", END);
+			return true;
 		}
+		return false;
 	}
 
 }

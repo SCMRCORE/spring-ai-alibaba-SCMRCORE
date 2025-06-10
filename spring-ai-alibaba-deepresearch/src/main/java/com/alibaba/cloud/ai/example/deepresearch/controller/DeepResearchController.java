@@ -109,15 +109,25 @@ public class DeepResearchController {
 			@RequestParam(value = "feed_back", required = true) String feedBack,
 			@RequestParam(value = "feed_back_content", required = false) String feedBackContent) {
 
-		RunnableConfig runnableConfig = RunnableConfig.builder().threadId(threadId).build();
+		RunnableConfig runnableConfig = RunnableConfig.builder()
+				.threadId(threadId)
+//				.nextNode("human_feedback")
+				.build();
 		Map<String, Object> objectMap = ChatRequestProcess.getStringObjectMap(feedBack, feedBackContent);
 
 		StateSnapshot stateSnapshot = compiledGraph.getState(runnableConfig);
 		OverAllState state = stateSnapshot.state();
-		state.withResume();
-		state.withHumanFeedback(new OverAllState.HumanFeedback(objectMap, "research_team"));
 
-		var resultFuture = compiledGraph.invoke(state, runnableConfig);
+		//尝试重构state
+		Map<String, Object> newData = new HashMap<>(state.data());
+		newData.remove("human_next_node");
+		OverAllState newState = new OverAllState(newData);
+		newState.registerKeyAndStrategy(state.keyStrategies());
+		newState.withResume();
+		newState.withHumanFeedback(new OverAllState.HumanFeedback(objectMap, "research_team"));
+
+
+		var resultFuture = compiledGraph.invoke(newState, runnableConfig);
 		return resultFuture.get().data();
 	}
 
